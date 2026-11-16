@@ -1,0 +1,407 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public and friend-visible user profile without PII.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "bio": { "type": "string", "maxLength": 240 },
+        "avatarColor": { "type": "string", "maxLength": 32 },
+        "themePreference": { "type": "string", "enum": ["dark", "light"] },
+        "shareStats": { "type": "boolean" },
+        "shareStreak": { "type": "boolean" },
+        "shareFocusHours": { "type": "boolean" },
+        "statsSummary": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "displayName", "themePreference", "shareStats", "shareStreak", "shareFocusHours", "statsSummary", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Strictly owner-only PII and notification/privacy preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 160 },
+        "notifications": { "type": "object" },
+        "privacy": { "type": "object" },
+        "monthlyBudget": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 8 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "notifications", "privacy", "createdAt", "updatedAt"]
+    },
+    "UsernameEntry": {
+      "title": "UsernameEntry",
+      "description": "Unique lowercase username registry mapping username to UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$" },
+        "searchable": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "searchable", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Private user to-do task item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+        "category": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "dueDate": { "type": "string", "maxLength": 20 },
+        "dueTime": { "type": "string", "maxLength": 10 },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "description", "priority", "category", "dueDate", "dueTime", "completed", "completedAt", "createdAt", "updatedAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Private personal goal whose progress and status are automatically computed from its checklist items.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "category": { "type": "string", "enum": ["Study", "Career", "Personal", "Health", "Skills", "Finance", "Other"] },
+        "icon": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "color": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "type": { "type": "string", "enum": ["daily", "weekly", "monthly", "yearly", "long-term"] },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "targetDate": { "type": "string", "maxLength": 20 },
+        "progress": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "completed", "paused"] },
+        "milestones": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "description", "category", "icon", "color", "startDate", "targetDate", "progress", "status", "createdAt", "updatedAt"]
+    },
+    "GoalChecklistItem": {
+      "title": "GoalChecklistItem",
+      "description": "Action step / sub-goal item belonging to a user's goal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "goalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "completed": { "type": "boolean" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "goalId", "title", "completed", "order", "createdAt", "updatedAt"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "Private rich-text note inside user notebook.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "content": { "type": "string", "maxLength": 50000 },
+        "category": { "type": "string", "enum": ["Personal", "College", "Ideas", "Projects", "Important", "Other"] },
+        "tags": { "type": "array" },
+        "pinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "content", "category", "tags", "pinned", "createdAt", "updatedAt"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Custom daily or weekly habit definition.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "frequency": { "type": "string", "enum": ["daily", "weekly"] },
+        "targetPerWeek": { "type": "number" },
+        "color": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "frequency", "targetPerWeek", "color", "createdAt", "updatedAt"]
+    },
+    "HabitCompletion": {
+      "title": "HabitCompletion",
+      "description": "Daily completion record for a habit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "habitId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "habitId", "date", "completed", "createdAt", "updatedAt"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "Personal calendar event, deadline, study session, or reminder.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "eventType": { "type": "string", "enum": ["event", "deadline", "study", "reminder"] },
+        "linkedTaskId": { "type": "string", "maxLength": 128 },
+        "linkedGoalId": { "type": "string", "maxLength": 128 },
+        "reminderMinutes": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "description", "date", "startTime", "endTime", "eventType", "linkedTaskId", "linkedGoalId", "reminderMinutes", "createdAt", "updatedAt"]
+    },
+    "FocusSession": {
+      "title": "FocusSession",
+      "description": "Completed Pomodoro or custom focus session record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "mode": { "type": "string", "enum": ["focus", "short-break", "long-break", "custom"] },
+        "durationMinutes": { "type": "number" },
+        "label": { "type": "string", "maxLength": 140 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "mode", "durationMinutes", "label", "date", "createdAt", "updatedAt"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "Private daily journal entry with mood, gratitude, reflection, and optional visual canvas elements.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "mood": { "type": "string", "enum": ["peaceful", "motivated", "grateful", "reflective", "tired", "stressed"] },
+        "gratitude": { "type": "string", "maxLength": 2000 },
+        "reflection": { "type": "string", "maxLength": 10000 },
+        "isDraft": { "type": "boolean" },
+        "templateId": { "type": "string", "maxLength": 40 },
+        "canvasBackground": { "type": "string", "maxLength": 240 },
+        "canvasBorder": { "type": "string", "maxLength": 160 },
+        "elements": { "type": "array" },
+        "thumbnailUrl": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "date", "title", "mood", "gratitude", "reflection", "createdAt", "updatedAt"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "Personal wishlist product item with image, price, link, priority, and purchase status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 1500 },
+        "price": { "type": "number" },
+        "productUrl": { "type": "string", "maxLength": 1000 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "imagePath": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+        "status": { "type": "string", "enum": ["Want", "Planning to Buy", "Purchased"] },
+        "purchasedAt": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "description", "price", "productUrl", "imageUrl", "imagePath", "category", "priority", "status", "purchasedAt", "createdAt", "updatedAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Strictly private personal expense transaction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "category": { "type": "string", "enum": ["Food", "Travel", "Shopping", "Education", "Entertainment", "Health", "Subscriptions", "Other"] },
+        "paymentMethod": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "amount", "date", "category", "paymentMethod", "description", "createdAt", "updatedAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Friend request sent between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fromUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "fromUsername": { "type": "string", "minLength": 3, "maxLength": 24 },
+        "toUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "toUsername": { "type": "string", "minLength": 3, "maxLength": 24 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fromUid", "fromUsername", "toUid", "toUsername", "status", "createdAt", "updatedAt"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Mutual friendship link between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 260 },
+        "users": { "type": "array" },
+        "userA": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userB": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "usernames": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "users", "userA", "userB", "usernames", "createdAt", "updatedAt"]
+    },
+    "SharedGoal": {
+      "title": "SharedGoal",
+      "description": "Explicitly shared goal between friends with celebration support.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 1500 },
+        "creatorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "creatorUsername": { "type": "string", "minLength": 3, "maxLength": 24 },
+        "participantUids": { "type": "array" },
+        "participantUsernames": { "type": "object" },
+        "targetDate": { "type": "string", "maxLength": 20 },
+        "progress": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "celebratedBy": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "description", "creatorUid", "creatorUsername", "participantUids", "participantUsernames", "targetDate", "progress", "status", "celebratedBy", "createdAt", "updatedAt"]
+    },
+    "Challenge": {
+      "title": "Challenge",
+      "description": "Group productivity challenge among friends.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 1500 },
+        "templateKey": { "type": "string", "enum": ["7-day-study", "30-day-coding", "daily-reading", "habit-consistency", "custom"] },
+        "durationDays": { "type": "number" },
+        "creatorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "creatorUsername": { "type": "string", "minLength": 3, "maxLength": 24 },
+        "participantUids": { "type": "array" },
+        "participantProgress": { "type": "object" },
+        "participantUsernames": { "type": "object" },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "description", "templateKey", "durationDays", "creatorUid", "creatorUsername", "participantUids", "participantProgress", "participantUsernames", "startDate", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public and friend-visible user profiles (no PII)."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Owner-only private user PII and settings."
+    },
+    "/usernames/{username}": {
+      "schema": { "$ref": "#/entities/UsernameEntry" },
+      "description": "Unique lowercase username registry."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Owner-only tasks."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/Goal" },
+      "description": "Owner-only personal goals."
+    },
+    "/users/{userId}/goalChecklistItems/{itemId}": {
+      "schema": { "$ref": "#/entities/GoalChecklistItem" },
+      "description": "Owner-only unlimited checklist action steps for goals."
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/Note" },
+      "description": "Owner-only notes."
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "Owner-only habits."
+    },
+    "/users/{userId}/habitCompletions/{completionId}": {
+      "schema": { "$ref": "#/entities/HabitCompletion" },
+      "description": "Owner-only habit completions."
+    },
+    "/users/{userId}/calendarEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/CalendarEvent" },
+      "description": "Owner-only calendar events."
+    },
+    "/users/{userId}/focusSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/FocusSession" },
+      "description": "Owner-only focus sessions."
+    },
+    "/users/{userId}/journalEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/JournalEntry" },
+      "description": "Owner-only journal entries."
+    },
+    "/users/{userId}/wishlist/{itemId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "Owner-only personal wishlist items."
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Owner-only personal expenses."
+    },
+    "/friendRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend requests scoped to sender and recipient."
+    },
+    "/friendships/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Mutual friendships between two users."
+    },
+    "/sharedGoals/{goalId}": {
+      "schema": { "$ref": "#/entities/SharedGoal" },
+      "description": "Shared goals accessible only to listed participants."
+    },
+    "/challenges/{challengeId}": {
+      "schema": { "$ref": "#/entities/Challenge" },
+      "description": "Group challenges accessible only to listed participants."
+    }
+  }
+}

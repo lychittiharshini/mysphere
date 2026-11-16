@@ -1,0 +1,888 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidFriendshipId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 260 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUsername(u) {
+      return u is string && u.size() >= 3 && u.size() <= 24 && u.matches('^[a-z0-9_]+$');
+    }
+
+    function isValidDateStr(d) {
+      return d is string && d.size() <= 20;
+    }
+
+    function isValidTimeStr(t) {
+      return t is string && t.size() <= 10;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'username', 'displayName', 'themePreference',
+          'shareStats', 'shareStreak', 'shareFocusHours',
+          'statsSummary', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'username', 'displayName', 'bio', 'avatarColor',
+          'themePreference', 'shareStats', 'shareStreak', 'shareFocusHours',
+          'statsSummary', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && isValidUsername(data.username)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 240))
+        && (!('avatarColor' in data) || (data.avatarColor is string && data.avatarColor.size() <= 32))
+        && data.themePreference in ['dark', 'light']
+        && data.shareStats is bool
+        && data.shareStreak is bool
+        && data.shareFocusHours is bool
+        && data.statsSummary is map
+        && data.statsSummary.keys().hasOnly([
+          'tasksCompletedToday', 'activeGoals', 'currentStreak',
+          'focusMinutesToday', 'productivityScore', 'updatedDate'
+        ])
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'notifications', 'privacy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'notifications', 'privacy', 'monthlyBudget', 'currency', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 160
+        && data.notifications is map
+        && data.notifications.keys().hasOnly(['taskReminders', 'goalMilestones', 'friendRequests', 'focusChime'])
+        && data.privacy is map
+        && data.privacy.keys().hasOnly(['searchableByUsername', 'showStatsToFriends', 'showStreakToFriends', 'showFocusToFriends'])
+        && (!('monthlyBudget' in data) || (data.monthlyBudget is number && data.monthlyBudget >= 0 && data.monthlyBudget <= 100000000))
+        && (!('currency' in data) || (data.currency is string && data.currency.size() <= 8))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUsernameDoc(data, username) {
+      return data.keys().hasAll(['uid', 'username', 'searchable', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'username', 'searchable', 'createdAt'])
+        && data.uid is string && data.uid == request.auth.uid && data.uid.size() <= 128
+        && isValidUsername(data.username) && data.username == username
+        && data.searchable is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidTask(data, userId, taskId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'description', 'priority',
+          'category', 'dueDate', 'dueTime', 'completed', 'completedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'description', 'priority',
+          'category', 'dueDate', 'dueTime', 'completed', 'completedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == taskId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 2000
+        && data.priority in ['high', 'medium', 'low']
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 40
+        && isValidDateStr(data.dueDate)
+        && isValidTimeStr(data.dueTime)
+        && data.completed is bool
+        && data.completedAt is string && data.completedAt.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGoal(data, userId, goalId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'description',
+          'startDate', 'targetDate', 'progress', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'description', 'category', 'icon', 'color', 'type',
+          'startDate', 'targetDate', 'progress', 'status', 'milestones',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == goalId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 2000
+        && (!('category' in data) || data.category in ['Study', 'Career', 'Personal', 'Health', 'Skills', 'Finance', 'Other'])
+        && (!('icon' in data) || (data.icon is string && data.icon.size() >= 1 && data.icon.size() <= 32))
+        && (!('color' in data) || (data.color is string && data.color.size() >= 1 && data.color.size() <= 32))
+        && (!('type' in data) || data.type in ['daily', 'weekly', 'monthly', 'yearly', 'long-term'])
+        && isValidDateStr(data.startDate)
+        && isValidDateStr(data.targetDate)
+        && data.progress is number && data.progress >= 0 && data.progress <= 100
+        && data.status in ['active', 'completed', 'paused']
+        && (!('milestones' in data) || (
+          data.milestones is list && data.milestones.size() <= 20
+          && (data.milestones.size() == 0 || data.milestones[0] is map)
+        ))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGoalChecklistItem(data, userId, itemId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'goalId', 'title', 'completed', 'order', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'goalId', 'title', 'completed', 'order', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == itemId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && isValidId(data.goalId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.completed is bool
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNote(data, userId, noteId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'content', 'category',
+          'tags', 'pinned', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'content', 'category',
+          'tags', 'pinned', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == noteId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.content is string && data.content.size() <= 50000
+        && data.category in ['Personal', 'College', 'Ideas', 'Projects', 'Important', 'Other']
+        && data.tags is list && data.tags.size() <= 10
+        && (data.tags.size() == 0 || data.tags[0] is string)
+        && data.pinned is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHabit(data, userId, habitId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'frequency', 'targetPerWeek', 'color',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'frequency', 'targetPerWeek', 'color',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == habitId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.frequency in ['daily', 'weekly']
+        && data.targetPerWeek is number && data.targetPerWeek >= 1 && data.targetPerWeek <= 7
+        && data.color is string && data.color.size() <= 32
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHabitCompletion(data, userId, completionId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'habitId', 'date', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'habitId', 'date', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == completionId && data.id.size() <= 160
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.habitId is string && data.habitId.size() >= 1 && data.habitId.size() <= 128
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && data.completed is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCalendarEvent(data, userId, eventId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'description', 'date', 'startTime', 'endTime',
+          'eventType', 'linkedTaskId', 'linkedGoalId', 'reminderMinutes',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'description', 'date', 'startTime', 'endTime',
+          'eventType', 'linkedTaskId', 'linkedGoalId', 'reminderMinutes',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == eventId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 1000
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && isValidTimeStr(data.startTime)
+        && isValidTimeStr(data.endTime)
+        && data.eventType in ['event', 'deadline', 'study', 'reminder']
+        && data.linkedTaskId is string && data.linkedTaskId.size() <= 128
+        && data.linkedGoalId is string && data.linkedGoalId.size() <= 128
+        && data.reminderMinutes is number && data.reminderMinutes >= 0 && data.reminderMinutes <= 10080
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFocusSession(data, userId, sessionId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'mode', 'durationMinutes', 'label', 'date', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'mode', 'durationMinutes', 'label', 'date', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == sessionId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.mode in ['focus', 'short-break', 'long-break', 'custom']
+        && data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 180
+        && data.label is string && data.label.size() <= 140
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidJournalEntry(data, userId, entryId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'date', 'title', 'mood', 'gratitude', 'reflection',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'date', 'title', 'mood', 'gratitude', 'reflection',
+          'isDraft', 'templateId', 'canvasBackground', 'canvasBorder',
+          'elements', 'thumbnailUrl',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == entryId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.mood in ['peaceful', 'motivated', 'grateful', 'reflective', 'tired', 'stressed']
+        && data.gratitude is string && data.gratitude.size() <= 2000
+        && data.reflection is string && data.reflection.size() <= 10000
+        && (!('isDraft' in data) || data.isDraft is bool)
+        && (!('templateId' in data) || (data.templateId is string && data.templateId.size() <= 40))
+        && (!('canvasBackground' in data) || (data.canvasBackground is string && data.canvasBackground.size() <= 240))
+        && (!('canvasBorder' in data) || (data.canvasBorder is string && data.canvasBorder.size() <= 160))
+        && (!('elements' in data) || (
+          data.elements is list && data.elements.size() <= 80
+          && (data.elements.size() == 0 || data.elements[0] is map)
+        ))
+        && (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 2000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWishlistItem(data, userId, itemId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'name', 'description', 'price', 'productUrl',
+          'imageUrl', 'imagePath', 'category', 'priority', 'status', 'purchasedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'name', 'description', 'price', 'productUrl',
+          'imageUrl', 'imagePath', 'category', 'priority', 'status', 'purchasedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == itemId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 160
+        && data.description is string && data.description.size() <= 1500
+        && data.price is number && data.price >= 0 && data.price <= 100000000
+        && data.productUrl is string && data.productUrl.size() <= 1000
+        && data.imageUrl is string && data.imageUrl.size() <= 2000
+        && data.imagePath is string && data.imagePath.size() <= 300
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 40
+        && data.priority in ['high', 'medium', 'low']
+        && data.status in ['Want', 'Planning to Buy', 'Purchased']
+        && data.purchasedAt is string && data.purchasedAt.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExpense(data, userId, expenseId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'amount', 'date', 'category',
+          'paymentMethod', 'description', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'title', 'amount', 'date', 'category',
+          'paymentMethod', 'description', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == expenseId && data.id.size() <= 128
+        && data.userId is string && data.userId == userId && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.amount is number && data.amount >= 0 && data.amount <= 100000000
+        && data.date is string && data.date.size() >= 8 && data.date.size() <= 20
+        && data.category in ['Food', 'Travel', 'Shopping', 'Education', 'Entertainment', 'Health', 'Subscriptions', 'Other']
+        && data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 40
+        && data.description is string && data.description.size() <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendRequest(data, requestId) {
+      return data.keys().hasAll([
+          'id', 'fromUid', 'fromUsername', 'toUid', 'toUsername', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'fromUid', 'fromUsername', 'toUid', 'toUsername', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == requestId && data.id.size() <= 128
+        && data.fromUid is string && data.fromUid.size() <= 128
+        && isValidUsername(data.fromUsername)
+        && data.toUid is string && data.toUid.size() <= 128
+        && isValidUsername(data.toUsername)
+        && data.fromUid != data.toUid
+        && data.status in ['pending', 'accepted', 'rejected']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendship(data, friendshipId) {
+      return data.keys().hasAll(['id', 'users', 'userA', 'userB', 'usernames', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'users', 'userA', 'userB', 'usernames', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == friendshipId && data.id.size() <= 260
+        && data.users is list && data.users.size() == 2
+        && data.users[0] is string && data.users[1] is string
+        && data.userA is string && data.userA.size() <= 128
+        && data.userB is string && data.userB.size() <= 128
+        && data.userA != data.userB
+        && data.userA in data.users && data.userB in data.users
+        && data.usernames is map
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSharedGoal(data, goalId) {
+      return data.keys().hasAll([
+          'id', 'title', 'description', 'creatorUid', 'creatorUsername',
+          'participantUids', 'participantUsernames', 'targetDate',
+          'progress', 'status', 'celebratedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'description', 'creatorUid', 'creatorUsername',
+          'participantUids', 'participantUsernames', 'targetDate',
+          'progress', 'status', 'celebratedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == goalId && data.id.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 1500
+        && data.creatorUid is string && data.creatorUid.size() <= 128
+        && isValidUsername(data.creatorUsername)
+        && data.participantUids is list && data.participantUids.size() >= 1 && data.participantUids.size() <= 20
+        && data.participantUids[0] is string
+        && data.participantUsernames is map
+        && isValidDateStr(data.targetDate)
+        && data.progress is number && data.progress >= 0 && data.progress <= 100
+        && data.status in ['active', 'completed']
+        && data.celebratedBy is list && data.celebratedBy.size() <= 20
+        && (data.celebratedBy.size() == 0 || data.celebratedBy[0] is string)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChallenge(data, challengeId) {
+      return data.keys().hasAll([
+          'id', 'title', 'description', 'templateKey', 'durationDays',
+          'creatorUid', 'creatorUsername', 'participantUids', 'participantProgress',
+          'participantUsernames', 'startDate', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'description', 'templateKey', 'durationDays',
+          'creatorUid', 'creatorUsername', 'participantUids', 'participantProgress',
+          'participantUsernames', 'startDate', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == challengeId && data.id.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 1500
+        && data.templateKey in ['7-day-study', '30-day-coding', 'daily-reading', 'habit-consistency', 'custom']
+        && data.durationDays is number && data.durationDays >= 1 && data.durationDays <= 365
+        && data.creatorUid is string && data.creatorUid.size() <= 128
+        && isValidUsername(data.creatorUsername)
+        && data.participantUids is list && data.participantUids.size() >= 1 && data.participantUids.size() <= 25
+        && data.participantUids[0] is string
+        && data.participantProgress is map
+        && data.participantUsernames is map
+        && isValidDateStr(data.startDate)
+        && data.status in ['active', 'completed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /usernames/{username} {
+      allow get: if isVerified() && isValidUsername(username);
+      allow list: if false;
+      allow create: if isVerified()
+        && isValidUsername(username)
+        && isValidUsernameDoc(incoming(), username)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerified()
+        && isValidUsername(username)
+        && existing().uid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow get: if isVerified() && isValidId(userId);
+      allow list: if false;
+      allow create: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'username', 'displayName', 'bio', 'avatarColor',
+            'themePreference', 'shareStats', 'shareStreak', 'shareFocusHours',
+            'statsSummary', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerified() && isValidId(userId) && isOwner(userId);
+
+      match /private/{docId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(docId);
+        allow list: if false;
+        allow create: if isVerified()
+          && isOwner(userId)
+          && docId == 'info'
+          && isValidPrivateInfo(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && docId == 'info'
+          && isValidPrivateInfo(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'notifications', 'privacy', 'monthlyBudget', 'currency', 'updatedAt']);
+        allow delete: if isVerified() && isOwner(userId) && docId == 'info';
+      }
+
+      match /tasks/{taskId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(taskId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(taskId)
+          && isValidTask(incoming(), userId, taskId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(taskId)
+          && isValidTask(incoming(), userId, taskId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'priority', 'category',
+            'dueDate', 'dueTime', 'completed', 'completedAt', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(taskId);
+      }
+
+      match /goals/{goalId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(goalId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(goalId)
+          && isValidGoal(incoming(), userId, goalId)
+          && 'category' in incoming()
+          && 'icon' in incoming()
+          && 'color' in incoming()
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(goalId)
+          && isValidGoal(incoming(), userId, goalId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'category', 'icon', 'color', 'type',
+            'startDate', 'targetDate', 'progress', 'status', 'milestones', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(goalId);
+      }
+
+      match /goalChecklistItems/{itemId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(itemId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(itemId)
+          && isValidGoalChecklistItem(incoming(), userId, itemId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(userId)/goals/$(incoming().goalId));
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(itemId)
+          && isValidGoalChecklistItem(incoming(), userId, itemId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().goalId == existing().goalId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'completed', 'order', 'updatedAt'
+          ])
+          && exists(/databases/$(database)/documents/users/$(userId)/goals/$(existing().goalId));
+        allow delete: if isVerified() && isOwner(userId) && isValidId(itemId);
+      }
+
+      match /notes/{noteId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(noteId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(noteId)
+          && isValidNote(incoming(), userId, noteId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(noteId)
+          && isValidNote(incoming(), userId, noteId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'content', 'category', 'tags', 'pinned', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(noteId);
+      }
+
+      match /habits/{habitId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(habitId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(habitId)
+          && isValidHabit(incoming(), userId, habitId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(habitId)
+          && isValidHabit(incoming(), userId, habitId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'frequency', 'targetPerWeek', 'color', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(habitId);
+      }
+
+      match /habitCompletions/{completionId} {
+        allow get: if isVerified() && isOwner(userId) && isValidFriendshipId(completionId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidFriendshipId(completionId)
+          && isValidHabitCompletion(incoming(), userId, completionId)
+          && exists(/databases/$(database)/documents/users/$(userId)/habits/$(incoming().habitId))
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidFriendshipId(completionId)
+          && isValidHabitCompletion(incoming(), userId, completionId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().habitId == existing().habitId
+          && incoming().date == existing().date
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'updatedAt']);
+        allow delete: if isVerified() && isOwner(userId) && isValidFriendshipId(completionId);
+      }
+
+      match /calendarEvents/{eventId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(eventId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(eventId)
+          && isValidCalendarEvent(incoming(), userId, eventId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(eventId)
+          && isValidCalendarEvent(incoming(), userId, eventId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'date', 'startTime', 'endTime',
+            'eventType', 'linkedTaskId', 'linkedGoalId', 'reminderMinutes', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(eventId);
+      }
+
+      match /focusSessions/{sessionId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(sessionId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(sessionId)
+          && isValidFocusSession(incoming(), userId, sessionId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if false;
+        allow delete: if isVerified() && isOwner(userId) && isValidId(sessionId);
+      }
+
+      match /journalEntries/{entryId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(entryId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(entryId)
+          && isValidJournalEntry(incoming(), userId, entryId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(entryId)
+          && isValidJournalEntry(incoming(), userId, entryId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'date', 'title', 'mood', 'gratitude', 'reflection',
+            'isDraft', 'templateId', 'canvasBackground', 'canvasBorder',
+            'elements', 'thumbnailUrl', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(entryId);
+      }
+
+      match /wishlist/{itemId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(itemId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(itemId)
+          && isValidWishlistItem(incoming(), userId, itemId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(itemId)
+          && isValidWishlistItem(incoming(), userId, itemId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'description', 'price', 'productUrl', 'imageUrl',
+            'imagePath', 'category', 'priority', 'status', 'purchasedAt', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(itemId);
+      }
+
+      match /expenses/{expenseId} {
+        allow get: if isVerified() && isOwner(userId) && isValidId(expenseId);
+        allow list: if isVerified() && isOwner(userId);
+        allow create: if isVerified()
+          && isOwner(userId)
+          && isValidId(expenseId)
+          && isValidExpense(incoming(), userId, expenseId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerified()
+          && isOwner(userId)
+          && isValidId(expenseId)
+          && isValidExpense(incoming(), userId, expenseId)
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'amount', 'date', 'category', 'paymentMethod', 'description', 'updatedAt'
+          ]);
+        allow delete: if isVerified() && isOwner(userId) && isValidId(expenseId);
+      }
+    }
+
+    match /friendRequests/{requestId} {
+      allow get: if isVerified()
+        && isValidId(requestId)
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+      allow list: if isVerified()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if isVerified()
+        && isValidId(requestId)
+        && isValidFriendRequest(incoming(), requestId)
+        && incoming().fromUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(incoming().toUid));
+      allow update: if isVerified()
+        && isValidId(requestId)
+        && isValidFriendRequest(incoming(), requestId)
+        && existing().status == 'pending'
+        && existing().toUid == request.auth.uid
+        && incoming().id == existing().id
+        && incoming().fromUid == existing().fromUid
+        && incoming().fromUsername == existing().fromUsername
+        && incoming().toUid == existing().toUid
+        && incoming().toUsername == existing().toUsername
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().status in ['accepted', 'rejected']
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isVerified()
+        && isValidId(requestId)
+        && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+    }
+
+    match /friendships/{friendshipId} {
+      allow get: if isVerified()
+        && isValidFriendshipId(friendshipId)
+        && request.auth.uid in existing().users;
+      allow list: if isVerified()
+        && request.auth.uid in resource.data.users;
+      allow create: if isVerified()
+        && isValidFriendshipId(friendshipId)
+        && isValidFriendship(incoming(), friendshipId)
+        && request.auth.uid in incoming().users
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(incoming().userA))
+        && exists(/databases/$(database)/documents/users/$(incoming().userB));
+      allow update: if false;
+      allow delete: if isVerified()
+        && isValidFriendshipId(friendshipId)
+        && request.auth.uid in existing().users;
+    }
+
+    match /sharedGoals/{goalId} {
+      allow get: if isVerified()
+        && isValidId(goalId)
+        && request.auth.uid in existing().participantUids;
+      allow list: if isVerified()
+        && request.auth.uid in resource.data.participantUids;
+      allow create: if isVerified()
+        && isValidId(goalId)
+        && isValidSharedGoal(incoming(), goalId)
+        && incoming().creatorUid == request.auth.uid
+        && request.auth.uid in incoming().participantUids
+        && incoming().status == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(goalId)
+        && isValidSharedGoal(incoming(), goalId)
+        && request.auth.uid in existing().participantUids
+        && incoming().id == existing().id
+        && incoming().creatorUid == existing().creatorUid
+        && incoming().creatorUsername == existing().creatorUsername
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().status == 'active'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['progress', 'status', 'celebratedBy', 'updatedAt']))
+          ||
+          (existing().status == 'active'
+            && existing().creatorUid == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'targetDate', 'participantUids', 'participantUsernames', 'updatedAt']))
+          ||
+          (existing().status == 'completed'
+            && incoming().status == 'completed'
+            && incoming().progress == existing().progress
+            && incoming().diff(existing()).affectedKeys().hasOnly(['celebratedBy', 'updatedAt']))
+        );
+      allow delete: if isVerified()
+        && isValidId(goalId)
+        && existing().creatorUid == request.auth.uid;
+    }
+
+    match /challenges/{challengeId} {
+      allow get: if isVerified()
+        && isValidId(challengeId)
+        && request.auth.uid in existing().participantUids;
+      allow list: if isVerified()
+        && request.auth.uid in resource.data.participantUids;
+      allow create: if isVerified()
+        && isValidId(challengeId)
+        && isValidChallenge(incoming(), challengeId)
+        && incoming().creatorUid == request.auth.uid
+        && request.auth.uid in incoming().participantUids
+        && incoming().status == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(challengeId)
+        && isValidChallenge(incoming(), challengeId)
+        && request.auth.uid in existing().participantUids
+        && existing().status == 'active'
+        && incoming().id == existing().id
+        && incoming().creatorUid == existing().creatorUid
+        && incoming().creatorUsername == existing().creatorUsername
+        && incoming().templateKey == existing().templateKey
+        && incoming().durationDays == existing().durationDays
+        && incoming().startDate == existing().startDate
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'participantProgress', 'status', 'participantUids', 'participantUsernames', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerified()
+        && isValidId(challengeId)
+        && existing().creatorUid == request.auth.uid;
+    }
+  }
+}

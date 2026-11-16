@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isVerifiedOwner(userId) {
+      return request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true;
+    }
+
+    function isValidImageUpload() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /users/{userId}/wishlist/{fileName} {
+      allow read: if isVerifiedOwner(userId);
+      allow create, update: if isVerifiedOwner(userId) && isValidImageUpload();
+      allow delete: if isVerifiedOwner(userId);
+    }
+
+    match /users/{userId}/journal/{entryId}/{fileName} {
+      allow read: if isVerifiedOwner(userId);
+      allow create, update: if isVerifiedOwner(userId) && isValidImageUpload();
+      allow delete: if isVerifiedOwner(userId);
+    }
+  }
+}

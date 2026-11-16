@@ -1,0 +1,8 @@
+{
+  "name": "MySphere",
+  "description": "Your space. Your goals. Your growth. A personal productivity and friends accountability ecosystem for tasks, goals, notes, habits, calendar, focus mode, journaling, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
