@@ -7,7 +7,6 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
-  sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
@@ -43,14 +42,11 @@ interface AuthContextValue {
   profile: UserProfile | null;
   privateInfo: UserPrivateInfo | null;
   profileLoading: boolean;
-  needsVerification: boolean;
   needsUsernameSetup: boolean;
   registerWithEmail: (email: string, username: string, password: string) => Promise<void>;
   loginWithEmail: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   sendResetEmail: (email: string) => Promise<void>;
-  resendVerification: () => Promise<void>;
-  refreshVerification: () => Promise<boolean>;
   claimUsernameAndInitProfile: (username: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'avatarColor' | 'themePreference'>>) => Promise<void>;
   updatePrivacyAndNotifications: (params: {
@@ -73,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [privateInfo, setPrivateInfo] = useState<UserPrivateInfo | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [claimingProfile, setClaimingProfile] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
@@ -88,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (!user || !user.emailVerified) {
+    if (!user) {
       setProfile(null);
       setPrivateInfo(null);
       setProfileLoading(false);
@@ -151,11 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubProfile();
       unsubPrivate();
     };
-  }, [user, user?.emailVerified, setTheme]);
+  }, [user, setTheme]);
 
-  const needsVerification = Boolean(user && !user.emailVerified);
   const needsUsernameSetup = Boolean(
-    user && user.emailVerified && !profileLoading && !profile
+    user && !profileLoading && !claimingProfile && !profile
   );
 
   const registerWithEmail = async (email: string, username: string, password: string) => {
@@ -165,10 +161,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'Username must be 3-24 characters using lowercase letters, numbers, or underscores.'
       );
     }
-    const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    await updateProfile(cred.user, { displayName: cleanUsername });
-    await sendEmailVerification(cred.user);
-    setUser(auth.currentUser);
+    setClaimingProfile(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await updateProfile(cred.user, { displayName: cleanUsername });
+      setUser(auth.currentUser ?? cred.user);
+      await claimUsernameAndInitProfile(cleanUsername);
+    } finally {
+      setClaimingProfile(false);
+    }
   };
 
   const loginWithEmail = async (email: string, password: string, rememberMe: boolean) => {
@@ -177,8 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       rememberMe ? browserLocalPersistence : browserSessionPersistence
     );
     const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    await cred.user.reload();
-    setUser(auth.currentUser);
+    setUser(auth.currentUser ?? cred.user);
   };
 
   const loginWithGoogle = async () => {
@@ -191,24 +191,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await sendPasswordResetEmail(auth, email.trim());
   };
 
-  const resendVerification = async () => {
-    if (!auth.currentUser) throw new Error('No active session found.');
-    await sendEmailVerification(auth.currentUser);
-  };
-
-  const refreshVerification = async (): Promise<boolean> => {
-    if (!auth.currentUser) return false;
-    await auth.currentUser.reload();
-    await auth.currentUser.getIdToken(true);
-    const updated = auth.currentUser;
-    setUser(updated ? ({ ...updated, emailVerified: updated.emailVerified } as User) : null);
-    return Boolean(updated?.emailVerified);
-  };
-
   const claimUsernameAndInitProfile = async (rawUsername: string) => {
     const current = auth.currentUser;
-    if (!current || !current.emailVerified) {
-      throw new Error('Please verify your email before completing setup.');
+    if (!current) {
+      throw new Error('Please sign in before completing setup.');
     }
     const cleanUsername = normalizeUsername(rawUsername);
     if (!isValidUsernameFormat(cleanUsername)) {
@@ -443,14 +429,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         privateInfo,
         profileLoading,
-        needsVerification,
         needsUsernameSetup,
         registerWithEmail,
         loginWithEmail,
         loginWithGoogle,
         sendResetEmail,
-        resendVerification,
-        refreshVerification,
         claimUsernameAndInitProfile,
         updateUserProfile,
         updatePrivacyAndNotifications,

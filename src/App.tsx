@@ -38,7 +38,6 @@ const MySphereWorkspace: React.FC = () => {
     authLoading,
     profile,
     profileLoading,
-    needsVerification,
     needsUsernameSetup,
   } = useAuth();
 
@@ -97,7 +96,7 @@ const MySphereWorkspace: React.FC = () => {
   }, []);
 
   const isAuthenticatedReady = Boolean(
-    user && !needsVerification && !needsUsernameSetup && profile
+    user && !needsUsernameSetup && profile
   );
 
   // Keep URL aligned when transitioning into authenticated workspace
@@ -112,7 +111,7 @@ const MySphereWorkspace: React.FC = () => {
     }
   }, [isAuthenticatedReady, authLoading, profileLoading, activeTab]);
 
-  if (authLoading || (user && user.emailVerified && profileLoading)) {
+  if (authLoading || (user && profileLoading)) {
     return (
       <div className="relative min-h-screen flex items-center justify-center text-slate-900 dark:text-slate-100">
         <FernhollowCanvas variant="hero" />
@@ -124,8 +123,8 @@ const MySphereWorkspace: React.FC = () => {
     );
   }
 
-  // Unauthenticated or pending email verification / username onboarding
-  if (!user || needsVerification || needsUsernameSetup || !profile) {
+  // Unauthenticated or pending username onboarding
+  if (!user || needsUsernameSetup || !profile) {
     if (!user && publicView === 'landing') {
       return <LandingPage onOpenAuth={(mode) => navigatePublic(mode)} />;
     }

@@ -5,10 +5,8 @@ service firebase.storage {
       allow read, write: if false;
     }
 
-    function isVerifiedOwner(userId) {
-      return request.auth != null
-        && request.auth.uid == userId
-        && request.auth.token.email_verified == true;
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
     function isValidImageUpload() {
@@ -18,15 +16,15 @@ service firebase.storage {
     }
 
     match /users/{userId}/wishlist/{fileName} {
-      allow read: if isVerifiedOwner(userId);
-      allow create, update: if isVerifiedOwner(userId) && isValidImageUpload();
-      allow delete: if isVerifiedOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImageUpload();
+      allow delete: if isOwner(userId);
     }
 
     match /users/{userId}/journal/{entryId}/{fileName} {
-      allow read: if isVerifiedOwner(userId);
-      allow create, update: if isVerifiedOwner(userId) && isValidImageUpload();
-      allow delete: if isVerifiedOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidImageUpload();
+      allow delete: if isOwner(userId);
     }
   }
 }

@@ -53,7 +53,7 @@ export async function uploadUserImage(
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('storage/unauthorized')) {
       throw new Error(
-        'Firebase Storage denied upload. Verify Firebase Storage rules are deployed and your email is verified.'
+        'Firebase Storage denied upload. Verify Firebase Storage rules are deployed and you are signed in.'
       );
     }
     throw new Error(`Image upload failed: ${msg}`);

@@ -186,7 +186,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sharedGoals, setSharedGoals] = useState<SharedGoal[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
 
-  const uid = user && user.emailVerified && profile ? user.uid : null;
+  const uid = user && profile ? user.uid : null;
 
   useEffect(() => {
     if (!uid) {
@@ -478,7 +478,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [receivedRequests, sentRequests]);
 
   const requireUid = () => {
-    if (!uid) throw new Error('You must be signed in and verified.');
+    if (!uid) throw new Error('You must be signed in.');
     return uid;
   };
 

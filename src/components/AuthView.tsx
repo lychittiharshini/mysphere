@@ -1,13 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  CheckCircle2,
   Eye,
   EyeOff,
   Loader2,
-  MailCheck,
   Moon,
-  RefreshCw,
   Sun,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -28,14 +25,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
 }) => {
   const {
     user,
-    needsVerification,
     needsUsernameSetup,
     registerWithEmail,
     loginWithEmail,
     loginWithGoogle,
     sendResetEmail,
-    resendVerification,
-    refreshVerification,
     claimUsernameAndInitProfile,
     logout,
   } = useAuth();
@@ -52,10 +46,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Onboarding username state after email verification / Google Sign-In
+  // Onboarding username state after Google Sign-In or if username still needs claiming
   const [onboardingUsername, setOnboardingUsername] = useState(
-    () => normalizeUsername(user?.displayName || '')
+    () => normalizeUsername(user?.displayName || '').replace(/[^a-z0-9_]/g, '').slice(0, 24)
   );
+
+  useEffect(() => {
+    if (needsUsernameSetup && !onboardingUsername && user?.displayName) {
+      const candidate = normalizeUsername(user.displayName).replace(/[^a-z0-9_]/g, '').slice(0, 24);
+      if (candidate) setOnboardingUsername(candidate);
+    }
+  }, [needsUsernameSetup, onboardingUsername, user?.displayName]);
 
   const mapAuthError = (err: unknown): string => {
     const raw = err instanceof Error ? err.message : String(err);
@@ -102,7 +103,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setSubmitting(true);
     try {
       await registerWithEmail(email, cleanUser, password);
-      showToast('Account created! Please check your inbox to verify your email.', 'success');
+      showToast('Account created! Welcome to MySphere.', 'success');
     } catch (err) {
       setErrorMsg(mapAuthError(err));
     } finally {
@@ -155,38 +156,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  const handleCheckVerification = async () => {
-    setSubmitting(true);
-    setErrorMsg('');
-    try {
-      const verified = await refreshVerification();
-      if (verified) {
-        showToast('Email verified!', 'success');
-        if (user?.displayName && isValidUsernameFormat(normalizeUsername(user.displayName))) {
-          setOnboardingUsername(normalizeUsername(user.displayName));
-        }
-      } else {
-        setErrorMsg('Your email is not verified yet. Please click the link in your inbox first.');
-      }
-    } catch (err) {
-      setErrorMsg(mapAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    setSubmitting(true);
-    setErrorMsg('');
-    try {
-      await resendVerification();
-      showToast('Verification email resent.', 'success');
-    } catch (err) {
-      setErrorMsg(mapAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleClaimUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,63 +201,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       {/* Main auth card */}
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md rounded-2xl border border-slate-200/80 dark:border-white/12 bg-white/85 dark:bg-slate-950/75 backdrop-blur-2xl p-7 sm:p-8 shadow-2xl">
-          {needsVerification ? (
-            <div>
-              <div className="w-11 h-11 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300 flex items-center justify-center">
-                <MailCheck className="w-5 h-5" />
-              </div>
-              <h1 className="mt-4 font-display text-2xl font-semibold text-slate-950 dark:text-white">
-                Verify your email
-              </h1>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                We sent a verification link to{' '}
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {user?.email}
-                </span>
-                . Open your inbox, verify your email address, and continue below.
-              </p>
-
-              {errorMsg && (
-                <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-700 dark:text-rose-200">
-                  {errorMsg}
-                </div>
-              )}
-
-              <div className="mt-6 space-y-3">
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={handleCheckVerification}
-                  className="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  <span>I've Verified — Continue</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={handleResendVerification}
-                  className="w-full py-2.5 px-4 rounded-xl border border-slate-300 dark:border-white/15 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Resend Verification Email</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="w-full py-2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                >
-                  Sign out and use another email
-                </button>
-              </div>
-            </div>
-          ) : needsUsernameSetup ? (
+          {needsUsernameSetup ? (
             <form onSubmit={handleClaimUsername}>
               <h1 className="font-display text-2xl font-semibold text-slate-950 dark:text-white">
                 Claim your username
@@ -404,7 +317,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <div className="mt-5 space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    Gmail / Email Address
+                    Email Address
                   </label>
                   <input
                     type="email"

@@ -10,10 +10,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -440,28 +436,28 @@ service cloud.firestore {
     }
 
     match /usernames/{username} {
-      allow get: if isVerified() && isValidUsername(username);
+      allow get: if isSignedIn() && isValidUsername(username);
       allow list: if false;
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidUsername(username)
         && isValidUsernameDoc(incoming(), username)
         && incoming().createdAt == request.time;
       allow update: if false;
-      allow delete: if isVerified()
+      allow delete: if isSignedIn()
         && isValidUsername(username)
         && existing().uid == request.auth.uid;
     }
 
     match /users/{userId} {
-      allow get: if isVerified() && isValidId(userId);
+      allow get: if isSignedIn() && isValidId(userId);
       allow list: if false;
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidId(userId)
         && isOwner(userId)
         && isValidUserProfile(incoming(), userId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerified()
+      allow update: if isSignedIn()
         && isValidId(userId)
         && isOwner(userId)
         && isValidUserProfile(incoming(), userId)
@@ -475,18 +471,18 @@ service cloud.firestore {
             'statsSummary', 'updatedAt'
           ])
         );
-      allow delete: if isVerified() && isValidId(userId) && isOwner(userId);
+      allow delete: if isSignedIn() && isValidId(userId) && isOwner(userId);
 
       match /private/{docId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(docId);
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(docId);
         allow list: if false;
-        allow create: if isVerified()
+        allow create: if isSignedIn()
           && isOwner(userId)
           && docId == 'info'
           && isValidPrivateInfo(incoming(), userId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && docId == 'info'
           && isValidPrivateInfo(incoming(), userId)
@@ -494,19 +490,19 @@ service cloud.firestore {
           && incoming().createdAt == existing().createdAt
           && incoming().updatedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'notifications', 'privacy', 'monthlyBudget', 'currency', 'updatedAt']);
-        allow delete: if isVerified() && isOwner(userId) && docId == 'info';
+        allow delete: if isSignedIn() && isOwner(userId) && docId == 'info';
       }
 
       match /tasks/{taskId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(taskId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(taskId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(taskId)
           && isValidTask(incoming(), userId, taskId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(taskId)
           && isValidTask(incoming(), userId, taskId)
@@ -518,13 +514,13 @@ service cloud.firestore {
             'title', 'description', 'priority', 'category',
             'dueDate', 'dueTime', 'completed', 'completedAt', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(taskId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(taskId);
       }
 
       match /goals/{goalId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(goalId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(goalId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(goalId)
           && isValidGoal(incoming(), userId, goalId)
@@ -533,7 +529,7 @@ service cloud.firestore {
           && 'color' in incoming()
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(goalId)
           && isValidGoal(incoming(), userId, goalId)
@@ -545,20 +541,20 @@ service cloud.firestore {
             'title', 'description', 'category', 'icon', 'color', 'type',
             'startDate', 'targetDate', 'progress', 'status', 'milestones', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(goalId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(goalId);
       }
 
       match /goalChecklistItems/{itemId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(itemId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(itemId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(itemId)
           && isValidGoalChecklistItem(incoming(), userId, itemId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && existsAfter(/databases/$(database)/documents/users/$(userId)/goals/$(incoming().goalId));
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(itemId)
           && isValidGoalChecklistItem(incoming(), userId, itemId)
@@ -571,19 +567,19 @@ service cloud.firestore {
             'title', 'completed', 'order', 'updatedAt'
           ])
           && exists(/databases/$(database)/documents/users/$(userId)/goals/$(existing().goalId));
-        allow delete: if isVerified() && isOwner(userId) && isValidId(itemId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(itemId);
       }
 
       match /notes/{noteId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(noteId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(noteId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(noteId)
           && isValidNote(incoming(), userId, noteId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(noteId)
           && isValidNote(incoming(), userId, noteId)
@@ -594,19 +590,19 @@ service cloud.firestore {
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'content', 'category', 'tags', 'pinned', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(noteId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(noteId);
       }
 
       match /habits/{habitId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(habitId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(habitId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(habitId)
           && isValidHabit(incoming(), userId, habitId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(habitId)
           && isValidHabit(incoming(), userId, habitId)
@@ -617,20 +613,20 @@ service cloud.firestore {
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'frequency', 'targetPerWeek', 'color', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(habitId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(habitId);
       }
 
       match /habitCompletions/{completionId} {
-        allow get: if isVerified() && isOwner(userId) && isValidFriendshipId(completionId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidFriendshipId(completionId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidFriendshipId(completionId)
           && isValidHabitCompletion(incoming(), userId, completionId)
           && exists(/databases/$(database)/documents/users/$(userId)/habits/$(incoming().habitId))
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidFriendshipId(completionId)
           && isValidHabitCompletion(incoming(), userId, completionId)
@@ -641,19 +637,19 @@ service cloud.firestore {
           && incoming().createdAt == existing().createdAt
           && incoming().updatedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'updatedAt']);
-        allow delete: if isVerified() && isOwner(userId) && isValidFriendshipId(completionId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidFriendshipId(completionId);
       }
 
       match /calendarEvents/{eventId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(eventId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(eventId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(eventId)
           && isValidCalendarEvent(incoming(), userId, eventId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(eventId)
           && isValidCalendarEvent(incoming(), userId, eventId)
@@ -665,32 +661,32 @@ service cloud.firestore {
             'title', 'description', 'date', 'startTime', 'endTime',
             'eventType', 'linkedTaskId', 'linkedGoalId', 'reminderMinutes', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(eventId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(eventId);
       }
 
       match /focusSessions/{sessionId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(sessionId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(sessionId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(sessionId)
           && isValidFocusSession(incoming(), userId, sessionId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
         allow update: if false;
-        allow delete: if isVerified() && isOwner(userId) && isValidId(sessionId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(sessionId);
       }
 
       match /journalEntries/{entryId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(entryId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(entryId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(entryId)
           && isValidJournalEntry(incoming(), userId, entryId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(entryId)
           && isValidJournalEntry(incoming(), userId, entryId)
@@ -703,19 +699,19 @@ service cloud.firestore {
             'isDraft', 'templateId', 'canvasBackground', 'canvasBorder',
             'elements', 'thumbnailUrl', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(entryId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(entryId);
       }
 
       match /wishlist/{itemId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(itemId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(itemId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(itemId)
           && isValidWishlistItem(incoming(), userId, itemId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(itemId)
           && isValidWishlistItem(incoming(), userId, itemId)
@@ -727,19 +723,19 @@ service cloud.firestore {
             'name', 'description', 'price', 'productUrl', 'imageUrl',
             'imagePath', 'category', 'priority', 'status', 'purchasedAt', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(itemId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(itemId);
       }
 
       match /expenses/{expenseId} {
-        allow get: if isVerified() && isOwner(userId) && isValidId(expenseId);
-        allow list: if isVerified() && isOwner(userId);
-        allow create: if isVerified()
+        allow get: if isSignedIn() && isOwner(userId) && isValidId(expenseId);
+        allow list: if isSignedIn() && isOwner(userId);
+        allow create: if isSignedIn()
           && isOwner(userId)
           && isValidId(expenseId)
           && isValidExpense(incoming(), userId, expenseId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time;
-        allow update: if isVerified()
+        allow update: if isSignedIn()
           && isOwner(userId)
           && isValidId(expenseId)
           && isValidExpense(incoming(), userId, expenseId)
@@ -750,17 +746,17 @@ service cloud.firestore {
           && incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'amount', 'date', 'category', 'paymentMethod', 'description', 'updatedAt'
           ]);
-        allow delete: if isVerified() && isOwner(userId) && isValidId(expenseId);
+        allow delete: if isSignedIn() && isOwner(userId) && isValidId(expenseId);
       }
     }
 
     match /friendRequests/{requestId} {
-      allow get: if isVerified()
+      allow get: if isSignedIn()
         && isValidId(requestId)
         && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
-      allow list: if isVerified()
+      allow list: if isSignedIn()
         && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidId(requestId)
         && isValidFriendRequest(incoming(), requestId)
         && incoming().fromUid == request.auth.uid
@@ -768,7 +764,7 @@ service cloud.firestore {
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time
         && exists(/databases/$(database)/documents/users/$(incoming().toUid));
-      allow update: if isVerified()
+      allow update: if isSignedIn()
         && isValidId(requestId)
         && isValidFriendRequest(incoming(), requestId)
         && existing().status == 'pending'
@@ -782,18 +778,18 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && incoming().status in ['accepted', 'rejected']
         && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
-      allow delete: if isVerified()
+      allow delete: if isSignedIn()
         && isValidId(requestId)
         && (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
     }
 
     match /friendships/{friendshipId} {
-      allow get: if isVerified()
+      allow get: if isSignedIn()
         && isValidFriendshipId(friendshipId)
         && request.auth.uid in existing().users;
-      allow list: if isVerified()
+      allow list: if isSignedIn()
         && request.auth.uid in resource.data.users;
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidFriendshipId(friendshipId)
         && isValidFriendship(incoming(), friendshipId)
         && request.auth.uid in incoming().users
@@ -802,18 +798,18 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(incoming().userA))
         && exists(/databases/$(database)/documents/users/$(incoming().userB));
       allow update: if false;
-      allow delete: if isVerified()
+      allow delete: if isSignedIn()
         && isValidFriendshipId(friendshipId)
         && request.auth.uid in existing().users;
     }
 
     match /sharedGoals/{goalId} {
-      allow get: if isVerified()
+      allow get: if isSignedIn()
         && isValidId(goalId)
         && request.auth.uid in existing().participantUids;
-      allow list: if isVerified()
+      allow list: if isSignedIn()
         && request.auth.uid in resource.data.participantUids;
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidId(goalId)
         && isValidSharedGoal(incoming(), goalId)
         && incoming().creatorUid == request.auth.uid
@@ -821,7 +817,7 @@ service cloud.firestore {
         && incoming().status == 'active'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerified()
+      allow update: if isSignedIn()
         && isValidId(goalId)
         && isValidSharedGoal(incoming(), goalId)
         && request.auth.uid in existing().participantUids
@@ -843,18 +839,18 @@ service cloud.firestore {
             && incoming().progress == existing().progress
             && incoming().diff(existing()).affectedKeys().hasOnly(['celebratedBy', 'updatedAt']))
         );
-      allow delete: if isVerified()
+      allow delete: if isSignedIn()
         && isValidId(goalId)
         && existing().creatorUid == request.auth.uid;
     }
 
     match /challenges/{challengeId} {
-      allow get: if isVerified()
+      allow get: if isSignedIn()
         && isValidId(challengeId)
         && request.auth.uid in existing().participantUids;
-      allow list: if isVerified()
+      allow list: if isSignedIn()
         && request.auth.uid in resource.data.participantUids;
-      allow create: if isVerified()
+      allow create: if isSignedIn()
         && isValidId(challengeId)
         && isValidChallenge(incoming(), challengeId)
         && incoming().creatorUid == request.auth.uid
@@ -862,7 +858,7 @@ service cloud.firestore {
         && incoming().status == 'active'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerified()
+      allow update: if isSignedIn()
         && isValidId(challengeId)
         && isValidChallenge(incoming(), challengeId)
         && request.auth.uid in existing().participantUids
@@ -880,7 +876,7 @@ service cloud.firestore {
             'participantProgress', 'status', 'participantUids', 'participantUsernames', 'updatedAt'
           ])
         );
-      allow delete: if isVerified()
+      allow delete: if isSignedIn()
         && isValidId(challengeId)
         && existing().creatorUid == request.auth.uid;
     }
