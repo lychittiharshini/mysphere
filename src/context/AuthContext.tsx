@@ -4,13 +4,11 @@ import {
   browserSessionPersistence,
   createUserWithEmailAndPassword,
   EmailAuthProvider,
-  GoogleAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
-  signInWithPopup,
   signOut,
   updatePassword,
   updateProfile,
@@ -45,7 +43,6 @@ interface AuthContextValue {
   needsUsernameSetup: boolean;
   registerWithEmail: (email: string, username: string, password: string) => Promise<void>;
   loginWithEmail: (email: string, password: string, rememberMe: boolean) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   sendResetEmail: (email: string) => Promise<void>;
   claimUsernameAndInitProfile: (username: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'avatarColor' | 'themePreference'>>) => Promise<void>;
@@ -179,12 +176,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
     setUser(auth.currentUser ?? cred.user);
-  };
-
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    await signInWithPopup(auth, provider);
   };
 
   const sendResetEmail = async (email: string) => {
@@ -432,7 +423,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsUsernameSetup,
         registerWithEmail,
         loginWithEmail,
-        loginWithGoogle,
         sendResetEmail,
         claimUsernameAndInitProfile,
         updateUserProfile,

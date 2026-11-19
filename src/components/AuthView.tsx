@@ -28,7 +28,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
     needsUsernameSetup,
     registerWithEmail,
     loginWithEmail,
-    loginWithGoogle,
     sendResetEmail,
     claimUsernameAndInitProfile,
     logout,
@@ -46,7 +45,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Onboarding username state after Google Sign-In or if username still needs claiming
+  // Onboarding username state if username still needs claiming
   const [onboardingUsername, setOnboardingUsername] = useState(
     () => normalizeUsername(user?.displayName || '').replace(/[^a-z0-9_]/g, '').slice(0, 24)
   );
@@ -61,7 +60,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const mapAuthError = (err: unknown): string => {
     const raw = err instanceof Error ? err.message : String(err);
     if (raw.includes('auth/operation-not-allowed')) {
-      return 'Email/Password sign-in is not yet enabled in Firebase Console (Authentication > Sign-in method). You can enable it there or use Google Sign-In below.';
+      return 'Email/Password sign-in is not yet enabled in Firebase Console (Authentication > Sign-in method).';
     }
     if (raw.includes('auth/email-already-in-use')) {
       return 'An account with this email already exists. Try signing in instead.';
@@ -74,9 +73,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
     if (raw.includes('auth/weak-password')) {
       return 'Password should be at least 6 characters.';
-    }
-    if (raw.includes('auth/popup-closed-by-user')) {
-      return 'Google sign-in popup was closed before completing.';
     }
     return raw.replace('Firebase: ', '').replace(/\s*\(auth\/[^)]+\)\.?/, '');
   };
@@ -137,18 +133,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
       await sendResetEmail(email);
       showToast('Password reset link sent to your email.', 'success');
       setMode('login');
-    } catch (err) {
-      setErrorMsg(mapAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setErrorMsg('');
-    setSubmitting(true);
-    try {
-      await loginWithGoogle();
     } catch (err) {
       setErrorMsg(mapAuthError(err));
     } finally {
@@ -394,21 +378,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <span>Create Account</span>
               </button>
 
-              <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                <span className="text-xs text-slate-400">or</span>
-                <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-              </div>
-
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleGoogle}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/70 text-sm font-medium text-slate-800 dark:text-slate-100 transition-colors cursor-pointer"
-              >
-                Continue with Google
-              </button>
-
               <p className="mt-5 text-center text-xs text-slate-600 dark:text-slate-400">
                 Already have an account?{' '}
                 <button
@@ -508,21 +477,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
               >
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>Login</span>
-              </button>
-
-              <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                <span className="text-xs text-slate-400">or</span>
-                <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-              </div>
-
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleGoogle}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/70 text-sm font-medium text-slate-800 dark:text-slate-100 transition-colors cursor-pointer"
-              >
-                Continue with Google
               </button>
 
               <p className="mt-5 text-center text-xs text-slate-600 dark:text-slate-400">
